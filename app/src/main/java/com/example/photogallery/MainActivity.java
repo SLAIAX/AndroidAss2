@@ -2,6 +2,7 @@ package com.example.photogallery;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.ContentResolver;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -19,6 +20,7 @@ import android.widget.ImageView;
 import android.provider.MediaStore;
 import android.widget.ListView;
 
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 
@@ -33,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     GridView images;
     ImageAdapter adapter;
     ImageButton reload;
+    Cursor imageCursor;
 
 
     // list of camera URLs, anything that returns a jpeg will work here.
@@ -61,11 +64,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        imageCursor = getContentResolver().query(MediaStore.Images.Thumbnails.EXTERNAL_CONTENT_URI, null, null, null, null);
+
+
         images=findViewById(R.id.gridview);
         adapter=new ImageAdapter();
         images.setAdapter(adapter);
         reload=findViewById(R.id.button);
         reload.setOnClickListener(view -> adapter.notifyDataSetChanged());
+
+
+
     }
 
     // gets view data
@@ -120,25 +129,27 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 protected Bitmap doInBackground(ViewHolder... params) {
                     vh=params[0];
-                    // get the string for the url
-                    String address=urls[vh.position%urls.length];
-                    Bitmap bmp=null;
-                    try {
-                        Log.i(TAG,"Loading:"+address);
-                        URL url = new URL(address);
-                        // open network connection
-                        URLConnection connection=url.openConnection();
-                        // vh position might have changed
-                        if(vh.position!=i)
-                            return null;
-                        // decode the jpeg into a bitmap
-                        bmp = BitmapFactory.decodeStream(connection.getInputStream());
-                    } catch (Exception e) {
-                        Log.i(TAG,"Error Loading:" + i + " " +address);
-                        e.printStackTrace();
-                    }
-                    // return the bitmap (might be null)
-                    return bmp;
+
+
+//                    // get the string for the url
+//                    String address=urls[vh.position%urls.length];
+//                    Bitmap bmp=null;
+//                    try {
+//                        Log.i(TAG,"Loading:"+address);
+//                        URL url = new URL(address);
+//                        // open network connection
+//                        URLConnection connection=url.openConnection();
+//                        // vh position might have changed
+//                        if(vh.position!=i)
+//                             return null;
+//                        // decode the jpeg into a bitmap
+//                        bmp = BitmapFactory.decodeStream(connection.getInputStream());
+//                    } catch (Exception e) {
+//                        Log.i(TAG,"Error Loading:" + i + " " +address);
+//                        e.printStackTrace();
+//                    }
+//                    // return the bitmap (might be null)
+//                    return bmp;
                 }
                 @Override
                 protected void onPostExecute(Bitmap bmp) {
@@ -171,4 +182,17 @@ public class MainActivity extends AppCompatActivity {
             return convertView;
         }
     }
+
+    protected int getImageOrientation() throws IOException {
+        Cursor cursor = context.getContentResolver().query(uri,
+                new String[]{MediaStore.Images.ImageColumns.ORIENTATION}, null, null, null);
+        if (cursor == null || cursor.getCount() != 1) {
+            return 0;
+        }
+        cursor.moveToFirst();
+        int orientation = cursor.getInt(0);
+        cursor.close();
+        return orientation;
+    }
+
 }
