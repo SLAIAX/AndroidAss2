@@ -19,7 +19,6 @@ import android.widget.GridView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.provider.MediaStore;
-import android.widget.ListView;
 
 import java.io.IOException;
 import java.net.URL;
@@ -29,9 +28,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "Images";
     // Number of tiles
     // this must be devisible by 8 for the initialization code to work.
-    private static final int NTILES=16;         //Change
+    private static final int NTILES=32;         //Change
     // Number of columns in the gridview
-    private static final int NCOLS=3;
+    private static final int NCOLS=4;
 
     GridView images;
     ImageAdapter adapter;
@@ -41,7 +40,6 @@ public class MainActivity extends AppCompatActivity {
 
     // list of camera URLs, anything that returns a jpeg will work here.
     String[] urls = {
-            //  "https://www.surf2surf.com/reports/freecams/RG",
             "https://www.surf2surf.com/reports/freecams/MW",
             "https://www.surf2surf.com/reports/freecams/PH",
             "https://www.surf2surf.com/reports/freecams/NP",
@@ -50,8 +48,6 @@ public class MainActivity extends AppCompatActivity {
             "https://www.surf2surf.com/reports/freecams/WG",
             "https://www.surf2surf.com/reports/freecams/MM",
             "https://www.surf2surf.com/reports/freecams/MC",
-            //      "https://www.surf2surf.com/reports/freecams/HB",
-            //      "https://www.surf2surf.com/reports/freecams/WM",
             "https://www.surf2surf.com/reports/freecams/GS",
             "https://www.surf2surf.com/reports/freecams/WA",
             "https://www.surf2surf.com/reports/freecams/DN",
@@ -65,8 +61,6 @@ public class MainActivity extends AppCompatActivity {
             "https://www.surf2surf.com/reports/freecams/WG",
             "https://www.surf2surf.com/reports/freecams/MM",
             "https://www.surf2surf.com/reports/freecams/MC",
-            //      "https://www.surf2surf.com/reports/freecams/HB",
-            //      "https://www.surf2surf.com/reports/freecams/WM",
             "https://www.surf2surf.com/reports/freecams/GS",
             "https://www.surf2surf.com/reports/freecams/WA",
             "https://www.surf2surf.com/reports/freecams/DN",
@@ -80,8 +74,46 @@ public class MainActivity extends AppCompatActivity {
             "https://www.surf2surf.com/reports/freecams/WG",
             "https://www.surf2surf.com/reports/freecams/MM",
             "https://www.surf2surf.com/reports/freecams/MC",
-            //      "https://www.surf2surf.com/reports/freecams/HB",
-            //      "https://www.surf2surf.com/reports/freecams/WM",
+            "https://www.surf2surf.com/reports/freecams/GS",
+            "https://www.surf2surf.com/reports/freecams/WA",
+            "https://www.surf2surf.com/reports/freecams/DN",
+            "http://www.takapunabeach.com/netcam.jpg",
+            "http://www.windsurf.co.nz/webcams/orewa.jpg",
+            "http://www.windsurf.co.nz/webcams/orewa2.jpg",
+            "https://www.surf2surf.com/reports/freecams/MW",
+            "https://www.surf2surf.com/reports/freecams/PH",
+            "https://www.surf2surf.com/reports/freecams/NP",
+            "https://www.surf2surf.com/reports/freecams/TA",
+            "https://www.surf2surf.com/reports/freecams/MB",
+            "https://www.surf2surf.com/reports/freecams/WG",
+            "https://www.surf2surf.com/reports/freecams/MM",
+            "https://www.surf2surf.com/reports/freecams/MC",
+            "https://www.surf2surf.com/reports/freecams/GS",
+            "https://www.surf2surf.com/reports/freecams/WA",
+            "https://www.surf2surf.com/reports/freecams/DN",
+            "http://www.takapunabeach.com/netcam.jpg",
+            "http://www.windsurf.co.nz/webcams/orewa.jpg",
+            "https://www.surf2surf.com/reports/freecams/MW",
+            "https://www.surf2surf.com/reports/freecams/PH",
+            "https://www.surf2surf.com/reports/freecams/NP",
+            "https://www.surf2surf.com/reports/freecams/TA",
+            "https://www.surf2surf.com/reports/freecams/MB",
+            "https://www.surf2surf.com/reports/freecams/WG",
+            "https://www.surf2surf.com/reports/freecams/MM",
+            "https://www.surf2surf.com/reports/freecams/MC",
+            "https://www.surf2surf.com/reports/freecams/GS",
+            "https://www.surf2surf.com/reports/freecams/WA",
+            "https://www.surf2surf.com/reports/freecams/DN",
+            "http://www.takapunabeach.com/netcam.jpg",
+            "http://www.windsurf.co.nz/webcams/orewa.jpg",
+            "https://www.surf2surf.com/reports/freecams/MW",
+            "https://www.surf2surf.com/reports/freecams/PH",
+            "https://www.surf2surf.com/reports/freecams/NP",
+            "https://www.surf2surf.com/reports/freecams/TA",
+            "https://www.surf2surf.com/reports/freecams/MB",
+            "https://www.surf2surf.com/reports/freecams/WG",
+            "https://www.surf2surf.com/reports/freecams/MM",
+            "https://www.surf2surf.com/reports/freecams/MC",
             "https://www.surf2surf.com/reports/freecams/GS",
             "https://www.surf2surf.com/reports/freecams/WA",
             "https://www.surf2surf.com/reports/freecams/DN",
@@ -94,8 +126,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        //imageCursor = getContentResolver().query(MediaStore.Images.Thumbnails.EXTERNAL_CONTENT_URI, null, null, null, null);
 
 
         images=findViewById(R.id.gridview);
@@ -191,21 +221,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }.execute(vh);//executeOnExecutor(mExecutor,vh);
 
-
-
-
-            // set size to be square
-//            convertView.setMinimumHeight(mTiles.getWidth() /  mTiles.getNumColumns());
-//            // make sure it isn't rotated
-//            vh.image.setRotationY(0);
-//            // if it's turned over, show it's icon
-//            if (mTurned[i])
-//                vh.image.setImageResource(mDrawables[mTileValues[i]]);
-//            else
-//                vh.image.setImageDrawable(null);
-//            vh.position=i;
-//
-
             //Set onClickListener
 
             convertView.setOnClickListener(new View.OnClickListener() {
@@ -224,17 +239,4 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(this, ImageViewActivity.class);
         startActivity(intent);
     }
-
-//    protected int getImageOrientation() throws IOException {
-//        Cursor cursor = context.getContentResolver().query(uri,
-//                new String[]{MediaStore.Images.ImageColumns.ORIENTATION}, null, null, null);
-//        if (cursor == null || cursor.getCount() != 1) {
-//            return 0;
-//        }
-//        cursor.moveToFirst();
-//        int orientation = cursor.getInt(0);
-//        cursor.close();
-//        return orientation;
-//    }
-
 }
