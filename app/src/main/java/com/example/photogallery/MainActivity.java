@@ -1,17 +1,24 @@
 package com.example.photogallery;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.Manifest;
 import android.content.ContentResolver;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.Image;
+import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
+import android.util.LruCache;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -20,6 +27,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.provider.MediaStore;
 
+import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -27,117 +35,79 @@ import java.net.URLConnection;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "Images";
-    // Number of tiles
-    // this must be devisible by 8 for the initialization code to work.
-    private static final int NTILES=32;         //Change
-    // Number of columns in the gridview
-    private static final int NCOLS=4;
 
-    GridView images;
-    ImageAdapter adapter;
-    ImageButton reload;
-    Cursor imageCursor;
+    private GridView images;
+    private ImageAdapter adapter;
+    private ImageButton reload;
+    private Cursor imageCursor;
+    private int imageCount;
+    private int position;
+    private LruCache<String, Bitmap> memoryCache;/////////////
 
-
-    // list of camera URLs, anything that returns a jpeg will work here.
-    String[] urls = {
-            "https://www.surf2surf.com/reports/freecams/MW",
-            "https://www.surf2surf.com/reports/freecams/PH",
-            "https://www.surf2surf.com/reports/freecams/NP",
-            "https://www.surf2surf.com/reports/freecams/TA",
-            "https://www.surf2surf.com/reports/freecams/MB",
-            "https://www.surf2surf.com/reports/freecams/WG",
-            "https://www.surf2surf.com/reports/freecams/MM",
-            "https://www.surf2surf.com/reports/freecams/MC",
-            "https://www.surf2surf.com/reports/freecams/GS",
-            "https://www.surf2surf.com/reports/freecams/WA",
-            "https://www.surf2surf.com/reports/freecams/DN",
-            "http://www.takapunabeach.com/netcam.jpg",
-            "http://www.windsurf.co.nz/webcams/orewa.jpg",
-            "https://www.surf2surf.com/reports/freecams/MW",
-            "https://www.surf2surf.com/reports/freecams/PH",
-            "https://www.surf2surf.com/reports/freecams/NP",
-            "https://www.surf2surf.com/reports/freecams/TA",
-            "https://www.surf2surf.com/reports/freecams/MB",
-            "https://www.surf2surf.com/reports/freecams/WG",
-            "https://www.surf2surf.com/reports/freecams/MM",
-            "https://www.surf2surf.com/reports/freecams/MC",
-            "https://www.surf2surf.com/reports/freecams/GS",
-            "https://www.surf2surf.com/reports/freecams/WA",
-            "https://www.surf2surf.com/reports/freecams/DN",
-            "http://www.takapunabeach.com/netcam.jpg",
-            "http://www.windsurf.co.nz/webcams/orewa.jpg",
-            "https://www.surf2surf.com/reports/freecams/MW",
-            "https://www.surf2surf.com/reports/freecams/PH",
-            "https://www.surf2surf.com/reports/freecams/NP",
-            "https://www.surf2surf.com/reports/freecams/TA",
-            "https://www.surf2surf.com/reports/freecams/MB",
-            "https://www.surf2surf.com/reports/freecams/WG",
-            "https://www.surf2surf.com/reports/freecams/MM",
-            "https://www.surf2surf.com/reports/freecams/MC",
-            "https://www.surf2surf.com/reports/freecams/GS",
-            "https://www.surf2surf.com/reports/freecams/WA",
-            "https://www.surf2surf.com/reports/freecams/DN",
-            "http://www.takapunabeach.com/netcam.jpg",
-            "http://www.windsurf.co.nz/webcams/orewa.jpg",
-            "http://www.windsurf.co.nz/webcams/orewa2.jpg",
-            "https://www.surf2surf.com/reports/freecams/MW",
-            "https://www.surf2surf.com/reports/freecams/PH",
-            "https://www.surf2surf.com/reports/freecams/NP",
-            "https://www.surf2surf.com/reports/freecams/TA",
-            "https://www.surf2surf.com/reports/freecams/MB",
-            "https://www.surf2surf.com/reports/freecams/WG",
-            "https://www.surf2surf.com/reports/freecams/MM",
-            "https://www.surf2surf.com/reports/freecams/MC",
-            "https://www.surf2surf.com/reports/freecams/GS",
-            "https://www.surf2surf.com/reports/freecams/WA",
-            "https://www.surf2surf.com/reports/freecams/DN",
-            "http://www.takapunabeach.com/netcam.jpg",
-            "http://www.windsurf.co.nz/webcams/orewa.jpg",
-            "https://www.surf2surf.com/reports/freecams/MW",
-            "https://www.surf2surf.com/reports/freecams/PH",
-            "https://www.surf2surf.com/reports/freecams/NP",
-            "https://www.surf2surf.com/reports/freecams/TA",
-            "https://www.surf2surf.com/reports/freecams/MB",
-            "https://www.surf2surf.com/reports/freecams/WG",
-            "https://www.surf2surf.com/reports/freecams/MM",
-            "https://www.surf2surf.com/reports/freecams/MC",
-            "https://www.surf2surf.com/reports/freecams/GS",
-            "https://www.surf2surf.com/reports/freecams/WA",
-            "https://www.surf2surf.com/reports/freecams/DN",
-            "http://www.takapunabeach.com/netcam.jpg",
-            "http://www.windsurf.co.nz/webcams/orewa.jpg",
-            "https://www.surf2surf.com/reports/freecams/MW",
-            "https://www.surf2surf.com/reports/freecams/PH",
-            "https://www.surf2surf.com/reports/freecams/NP",
-            "https://www.surf2surf.com/reports/freecams/TA",
-            "https://www.surf2surf.com/reports/freecams/MB",
-            "https://www.surf2surf.com/reports/freecams/WG",
-            "https://www.surf2surf.com/reports/freecams/MM",
-            "https://www.surf2surf.com/reports/freecams/MC",
-            "https://www.surf2surf.com/reports/freecams/GS",
-            "https://www.surf2surf.com/reports/freecams/WA",
-            "https://www.surf2surf.com/reports/freecams/DN",
-            "http://www.takapunabeach.com/netcam.jpg",
-            "http://www.windsurf.co.nz/webcams/orewa.jpg",
-            "http://www.windsurf.co.nz/webcams/orewa2.jpg"
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        if(Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},1);
+        } else {
+            init();
+        }
+///////////////////////////////////////////////////
+        // Get max available VM memory, exceeding this amount will throw an
+        // OutOfMemory exception. Stored in kilobytes as LruCache takes an
+        // int in its constructor.
+        final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
 
+        // Use 1/8th of the available memory for this memory cache.
+        final int cacheSize = maxMemory;        //ADJUST. Was divided by 8
+
+        memoryCache = new LruCache<String, Bitmap>(cacheSize) {
+            @Override
+            protected int sizeOf(String key, Bitmap bitmap) {
+                // The cache size will be measured in kilobytes rather than
+                // number of items.
+                return bitmap.getByteCount() / 1024;
+            }
+        };
+        /////////////////////////////////////////////////
+    }
+
+    ////////////////////////////
+    public void addBitmapToMemoryCache(String key, Bitmap bitmap) {
+        if (getBitmapFromMemCache(key) == null) {
+            memoryCache.put(key, bitmap);
+        }
+    }
+
+    public Bitmap getBitmapFromMemCache(String key) {
+        return memoryCache.get(key);
+    }
+
+
+
+    /////////////////////////////
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if(requestCode == 1 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+            init();
+        }
+    }
+
+    public void init(){
+        ContentResolver cr = getContentResolver();
+        imageCursor = cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null,MediaStore.Images.Media.DATE_ADDED + " DESC");
+        imageCursor.moveToFirst();
+        imageCount = imageCursor.getCount();
         images=findViewById(R.id.gridview);
         adapter=new ImageAdapter();
         images.setAdapter(adapter);
         reload=findViewById(R.id.button);
         reload.setOnClickListener(view -> adapter.notifyDataSetChanged());
-        ContentResolver cr = getContentResolver();
-        imageCursor = cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null,MediaStore.Images.Media.DATE_ADDED);
-        imageCursor.moveToFirst();
-
     }
 
     // gets view data
@@ -149,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
         // how many tiles
         @Override
         public int getCount() {
-            return 32/*imageCursor.getCount()*/;
+            return imageCount;
         }
         // not used
         @Override
@@ -179,74 +149,83 @@ public class MainActivity extends AppCompatActivity {
             } else
                 vh=(ViewHolder)convertView.getTag();        //otherwise get the viewHolder
             convertView.setMinimumHeight(200);              //adjust
+            convertView.setLayoutParams(new GridView.LayoutParams(300,300));              //adjust
             //Set position
             vh.position = i;
             //Erase old image
             vh.image.setImageBitmap(null);
 
 
+            final String imageKey = String.valueOf(i);
 
-            // make an AsyncTask to load the image
-            new AsyncTask<ViewHolder,Void, Bitmap>() {
-                private ViewHolder vh;
-                @Override
-                protected Bitmap doInBackground(ViewHolder... params) {
-                    vh=params[0];
+            final Bitmap bitmap = getBitmapFromMemCache(imageKey);
+            if (bitmap != null) {
+                vh.image.setImageBitmap(bitmap);
+            } else {
 
-                    imageCursor.moveToPosition(i);
-                   //  get the string for the url
-                    //String address=urls[vh.position%urls.length];
-                    Bitmap bmp = null;
-                    try {
-                        String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Media.DATA));
-                        File image = new File(path);
 
-                        bmp = BitmapFactory.decodeFile(image.getAbsolutePath());
-                    } catch (Exception e){
-                        Log.i(TAG, e.getMessage());
+                // make an AsyncTask to load the image
+                new AsyncTask<ViewHolder, Void, Bitmap>() {
+                    private ViewHolder vh;
+
+                    @Override
+                    protected Bitmap doInBackground(ViewHolder... params) {
+                        vh = params[0];
+
+                        imageCursor.moveToPosition(i);
+                        //  get the string for the url
+                        //String address=urls[vh.position%urls.length];
+                        Bitmap bmp = null;
+                        try {
+                            String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Thumbnails.DATA));
+                            File image = new File(path);
+
+                            bmp = ThumbnailUtils.extractThumbnail(BitmapFactory.decodeFile(image.getAbsolutePath()),200,200);
+                        } catch (Exception e) {
+                            Log.i(TAG, e.getMessage());
+                        }
+                        return bmp;
                     }
-//                    try {
-//                        Log.i(TAG,"Loading:"+address);
-//                        URL url = new URL(address);
-//                        // open network connection
-//                        URLConnection connection=url.openConnection();
-//                        // vh position might have changed
-//                        if(vh.position!=i)
-//                             return null;
-//                        // decode the jpeg into a bitmap
-//                        bmp = BitmapFactory.decodeStream(connection.getInputStream());
-//                    } catch (Exception e) {
-//                        Log.i(TAG,"Error Loading:" + i + " " +address);
-//                        e.printStackTrace();
-//                    }
-//                    // return the bitmap (might be null)
-                    return bmp;
-                }
-                @Override
-                protected void onPostExecute(Bitmap bmp) {
-                    // only set the imageview if the position hasn't changed.
-                    if(vh.position==i) {
-                        vh.image.setImageBitmap(bmp);
-                    }
-                }
-            }.execute(vh);//executeOnExecutor(mExecutor,vh);
 
+                    @Override
+                    protected void onPostExecute(Bitmap bmp) {
+                        // only set the imageview if the position hasn't changed.
+                        if (vh.position == i) {
+                            vh.image.setImageBitmap(bmp);
+                        }
+                        addBitmapToMemoryCache(Integer.toString(i),bmp);
+                    }
+                }.execute(vh);//executeOnExecutor(mExecutor,vh);
+            }
             //Set onClickListener
 
-            convertView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    openImageViewActivity();
-                }
-            });
+            convertView.setOnClickListener(v -> openImageViewActivity(imageCursor.getPosition()));
 
 
             return convertView;
         }
     }
 
-    public void openImageViewActivity(){
+    public void openImageViewActivity(int pos){
         Intent intent = new Intent(this, ImageViewActivity.class);
+        intent.putExtra("ImagePosition", pos);
         startActivity(intent);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        // save the list position
+        position=images.getFirstVisiblePosition();
+        // close the cursor (will be opened again in init() during onResume())
+        imageCursor.close();
+    }
+    @Override
+    public void onResume() {
+        super.onResume();
+        // reinit in case things have changed
+        init();
+        // set the list position
+        images.setSelection(position);
     }
 }
