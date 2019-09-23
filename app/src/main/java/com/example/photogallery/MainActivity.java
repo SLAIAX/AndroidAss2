@@ -20,6 +20,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.provider.MediaStore;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -133,8 +134,9 @@ public class MainActivity extends AppCompatActivity {
         images.setAdapter(adapter);
         reload=findViewById(R.id.button);
         reload.setOnClickListener(view -> adapter.notifyDataSetChanged());
-
-
+        ContentResolver cr = getContentResolver();
+        imageCursor = cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null,MediaStore.Images.Media.DATE_ADDED);
+        imageCursor.moveToFirst();
 
     }
 
@@ -147,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
         // how many tiles
         @Override
         public int getCount() {
-            return NTILES;
+            return 32/*imageCursor.getCount()*/;
         }
         // not used
         @Override
@@ -191,25 +193,33 @@ public class MainActivity extends AppCompatActivity {
                 protected Bitmap doInBackground(ViewHolder... params) {
                     vh=params[0];
 
-
-                    // get the string for the url
-                    String address=urls[vh.position%urls.length];
-                    Bitmap bmp=null;
+                    imageCursor.moveToPosition(i);
+                   //  get the string for the url
+                    //String address=urls[vh.position%urls.length];
+                    Bitmap bmp = null;
                     try {
-                        Log.i(TAG,"Loading:"+address);
-                        URL url = new URL(address);
-                        // open network connection
-                        URLConnection connection=url.openConnection();
-                        // vh position might have changed
-                        if(vh.position!=i)
-                             return null;
-                        // decode the jpeg into a bitmap
-                        bmp = BitmapFactory.decodeStream(connection.getInputStream());
-                    } catch (Exception e) {
-                        Log.i(TAG,"Error Loading:" + i + " " +address);
-                        e.printStackTrace();
+                        String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Media.DATA));
+                        File image = new File(path);
+
+                        bmp = BitmapFactory.decodeFile(image.getAbsolutePath());
+                    } catch (Exception e){
+                        Log.i(TAG, e.getMessage());
                     }
-                    // return the bitmap (might be null)
+//                    try {
+//                        Log.i(TAG,"Loading:"+address);
+//                        URL url = new URL(address);
+//                        // open network connection
+//                        URLConnection connection=url.openConnection();
+//                        // vh position might have changed
+//                        if(vh.position!=i)
+//                             return null;
+//                        // decode the jpeg into a bitmap
+//                        bmp = BitmapFactory.decodeStream(connection.getInputStream());
+//                    } catch (Exception e) {
+//                        Log.i(TAG,"Error Loading:" + i + " " +address);
+//                        e.printStackTrace();
+//                    }
+//                    // return the bitmap (might be null)
                     return bmp;
                 }
                 @Override
