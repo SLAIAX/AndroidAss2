@@ -8,6 +8,7 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.Image;
+import android.media.ThumbnailUtils;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -17,7 +18,7 @@ import java.io.File;
 
 public class ImageViewActivity extends AppCompatActivity {
 
-    private int position;
+    private String path;
     private Cursor imageCursor;
     private ImageView pic;
 
@@ -25,21 +26,22 @@ public class ImageViewActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Intent intent = getIntent();
-        position = intent.getIntExtra("ImagePosition", 0);
-        System.out.println("Position: "+position);
-        ContentResolver cr = getContentResolver();
-        imageCursor = cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null,MediaStore.Images.Media.DATE_ADDED);
-        imageCursor.moveToPosition(position);
+        path = intent.getStringExtra("ImagePath");
+        setContentView(R.layout.activity_image_view);
+//        ContentResolver cr = getContentResolver();
+//        imageCursor = cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null,MediaStore.Images.Media.DATE_ADDED + " ASC");
+//        imageCursor.moveToPosition(position);
 
-
-        Bitmap bmp = null;
-        String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Thumbnails.DATA));
-        File image = new File(path);
-        bmp = BitmapFactory.decodeFile(image.getAbsolutePath());
-
-        pic = findViewById(R.id.imageLarge);
-        pic.setImageBitmap(bmp);
-
+        try {
+            Bitmap bmp;
+            File image = new File(path);
+            bmp = BitmapFactory.decodeFile(image.getAbsolutePath());
+            //bmp = ThumbnailUtils.extractThumbnail(BitmapFactory.decodeFile(image.getAbsolutePath()),200,200);
+            pic = findViewById(R.id.imageLarge);
+            pic.setImageBitmap(bmp);
+        } catch (Exception e){
+            System.out.println("ERROR "+e.getMessage());
+        }
 
 
     }

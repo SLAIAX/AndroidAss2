@@ -32,6 +32,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "Images";
@@ -43,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private int imageCount;
     private int position;
     private LruCache<String, Bitmap> memoryCache;/////////////
-
+    private ThreadPoolExecutor executor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         /////////////////////////////////////////////////
+
+        executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(4);
     }
 
     ////////////////////////////
@@ -195,20 +199,21 @@ public class MainActivity extends AppCompatActivity {
                         }
                         addBitmapToMemoryCache(Integer.toString(i),bmp);
                     }
-                }.execute(vh);//executeOnExecutor(mExecutor,vh);
+                }.executeOnExecutor(executor,vh);
             }
             //Set onClickListener
-
-            convertView.setOnClickListener(v -> openImageViewActivity(imageCursor.getPosition()));
+            convertView.setOnClickListener(v -> openImageViewActivity(vh));
 
 
             return convertView;
         }
     }
 
-    public void openImageViewActivity(int pos){
+    public void openImageViewActivity(ImageAdapter.ViewHolder vh){
+        imageCursor.moveToPosition(vh.position);
+        String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Media.DATA));
         Intent intent = new Intent(this, ImageViewActivity.class);
-        intent.putExtra("ImagePosition", pos);
+        intent.putExtra("ImagePath", path);
         startActivity(intent);
     }
 
