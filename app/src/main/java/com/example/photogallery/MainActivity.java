@@ -10,13 +10,11 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.media.Image;
+import android.graphics.Color;
 import android.media.ThumbnailUtils;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.util.LruCache;
 import android.view.View;
@@ -26,12 +24,7 @@ import android.widget.GridView;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.provider.MediaStore;
-
-import java.io.Console;
 import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -52,11 +45,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        if(Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
-            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},1);
-        } else {
-            init();
-        }
+
 ///////////////////////////////////////////////////
         // Get max available VM memory, exceeding this amount will throw an
         // OutOfMemory exception. Stored in kilobytes as LruCache takes an
@@ -75,6 +64,12 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         /////////////////////////////////////////////////
+
+        if(Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},1);
+        } else {
+            init();
+        }
 
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(4);
     }
@@ -106,12 +101,14 @@ public class MainActivity extends AppCompatActivity {
         ContentResolver cr = getContentResolver();
         imageCursor = cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null,MediaStore.Images.Media.DATE_ADDED + " DESC");
         imageCursor.moveToFirst();
+        //adapter.notifyDataSetChanged();
         imageCount = imageCursor.getCount();
         images=findViewById(R.id.gridview);
         adapter=new ImageAdapter();
         images.setAdapter(adapter);
-        reload=findViewById(R.id.button);
-        reload.setOnClickListener(view -> adapter.notifyDataSetChanged());
+
+//        reload=findViewById(R.id.button);
+//        reload.setOnClickListener(view -> adapter.notifyDataSetChanged());
     }
 
     // gets view data
@@ -152,8 +149,9 @@ public class MainActivity extends AppCompatActivity {
                 convertView.setTag(vh);
             } else
                 vh=(ViewHolder)convertView.getTag();        //otherwise get the viewHolder
-            convertView.setMinimumHeight(200);              //adjust
-            convertView.setLayoutParams(new GridView.LayoutParams(300,300));              //adjust
+            convertView.setMinimumHeight(images.getColumnWidth());
+
+            convertView.setLayoutParams(new GridView.LayoutParams(images.getColumnWidth(),images.getColumnWidth()));              //adjust
             //Set position
             vh.position = i;
             //Erase old image
@@ -166,19 +164,17 @@ public class MainActivity extends AppCompatActivity {
             if (bitmap != null) {
                 vh.image.setImageBitmap(bitmap);
             } else {
-
-
                 // make an AsyncTask to load the image
                 new AsyncTask<ViewHolder, Void, Bitmap>() {
+
                     private ViewHolder vh;
 
                     @Override
                     protected Bitmap doInBackground(ViewHolder... params) {
+
                         vh = params[0];
 
                         imageCursor.moveToPosition(i);
-                        //  get the string for the url
-                        //String address=urls[vh.position%urls.length];
                         Bitmap bmp = null;
                         try {
                             String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Thumbnails.DATA));
@@ -230,6 +226,8 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         // reinit in case things have changed
         init();
+        //Clear the cache in-case new images
+        memoryCache.evictAll();
         // set the list position
         images.setSelection(position);
     }
