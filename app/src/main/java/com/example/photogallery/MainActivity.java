@@ -42,35 +42,14 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-
-///////////////////////////////////////////////////
-        // Get max available VM memory, exceeding this amount will throw an
-        // OutOfMemory exception. Stored in kilobytes as LruCache takes an
-        // int in its constructor.
-        final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-
-        // Use 1/8th of the available memory for this memory cache.
-        final int cacheSize = maxMemory;        //ADJUST. Was divided by 8
-
-        memoryCache = new LruCache<String, Bitmap>(cacheSize) {
-            @Override
-            protected int sizeOf(String key, Bitmap bitmap) {
-                // The cache size will be measured in kilobytes rather than
-                // number of items.
-                return bitmap.getByteCount() / 1024;
-            }
-        };
-        /////////////////////////////////////////////////
 
         if(Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
             requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},1);
         } else {
             init();
         }
+        System.out.println("EROROROROROR");
 
-        executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(4);
     }
 
     ////////////////////////////
@@ -97,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void init(){
+        setContentView(R.layout.activity_main);
         ContentResolver cr = getContentResolver();
         imageCursor = cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null,MediaStore.Images.Media.DATE_ADDED + " DESC");
         imageCursor.moveToFirst();
@@ -106,6 +86,29 @@ public class MainActivity extends AppCompatActivity {
         adapter=new ImageAdapter();
         images.setAdapter(adapter);
 
+
+        ///////////////////////////////////////////////////
+        // Get max available VM memory, exceeding this amount will throw an
+        // OutOfMemory exception. Stored in kilobytes as LruCache takes an
+        // int in its constructor.
+        final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+
+        // Use 1/8th of the available memory for this memory cache.
+        final int cacheSize = maxMemory;        //ADJUST. Was divided by 8
+
+        memoryCache = new LruCache<String, Bitmap>(cacheSize) {
+            @Override
+            protected int sizeOf(String key, Bitmap bitmap) {
+                // The cache size will be measured in kilobytes rather than
+                // number of items.
+                return bitmap.getByteCount() / 1024;
+            }
+        };
+        /////////////////////////////////////////////////
+
+
+
+        executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(4);
 //        reload=findViewById(R.id.button);
 //        reload.setOnClickListener(view -> adapter.notifyDataSetChanged());
     }
