@@ -19,6 +19,7 @@ import android.util.Log;
 import android.util.LruCache;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageButton;
@@ -47,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
         images=findViewById(R.id.gridview);
         adapter=new ImageAdapter();
         images.setAdapter(adapter);
+        images.setOnItemClickListener((parent, view, position, id) -> openImageViewActivity(position));
 
         if(Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
             requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},1);
@@ -192,9 +194,9 @@ public class MainActivity extends AppCompatActivity {
                         int orientation = imageCursor.getInt(imageCursor.getColumnIndex(MediaStore.Images.Media.ORIENTATION));
                         if(orientation != 0){
                             System.out.println("ERROR "+orientation);
-                            //Matrix matrix = new Matrix();
-                            //matrix.setRotate(orientation - 90);
-                            //bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+                            Matrix matrix = new Matrix();
+                            matrix.postRotate(-orientation);
+                            bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
 
                         }
 
@@ -211,16 +213,14 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }.executeOnExecutor(executor,vh);
             }
-            //Set onClickListener
-            convertView.setOnClickListener(v -> openImageViewActivity(vh));
 
 
             return convertView;
         }
     }
 
-    public void openImageViewActivity(ImageAdapter.ViewHolder vh){
-        imageCursor.moveToPosition(vh.position);
+    public void openImageViewActivity(int position){
+        imageCursor.moveToPosition(position);
         String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Media.DATA));
         Intent intent = new Intent(this, ImageViewActivity.class);
         intent.putExtra("ImagePath", path);
@@ -235,6 +235,7 @@ public class MainActivity extends AppCompatActivity {
         // close the cursor (will be opened again in init() during onResume())
         imageCursor.close();
     }
+
     @Override
     public void onResume() {
         super.onResume();
@@ -245,4 +246,5 @@ public class MainActivity extends AppCompatActivity {
         // set the list position
         images.setSelection(position);
     }
+
 }
