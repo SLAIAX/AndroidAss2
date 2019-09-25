@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.media.ThumbnailUtils;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -42,14 +43,16 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        images=findViewById(R.id.gridview);
+        adapter=new ImageAdapter();
+        images.setAdapter(adapter);
 
         if(Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
             requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},1);
         } else {
             init();
         }
-        System.out.println("EROROROROROR");
-
     }
 
     ////////////////////////////
@@ -72,19 +75,19 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if(requestCode == 1 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
             init();
+        } else{
+            finish();
         }
     }
 
     public void init(){
-        setContentView(R.layout.activity_main);
+
         ContentResolver cr = getContentResolver();
         imageCursor = cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null,MediaStore.Images.Media.DATE_ADDED + " DESC");
         imageCursor.moveToFirst();
         //adapter.notifyDataSetChanged();
         imageCount = imageCursor.getCount();
-        images=findViewById(R.id.gridview);
-        adapter=new ImageAdapter();
-        images.setAdapter(adapter);
+
 
 
         ///////////////////////////////////////////////////
@@ -94,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
         final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
 
         // Use 1/8th of the available memory for this memory cache.
-        final int cacheSize = maxMemory;        //ADJUST. Was divided by 8
+        final int cacheSize = maxMemory / 8;        //ADJUST. Was divided by 8
 
         memoryCache = new LruCache<String, Bitmap>(cacheSize) {
             @Override
@@ -186,6 +189,15 @@ public class MainActivity extends AppCompatActivity {
                         } catch (Exception e) {
                             Log.i(TAG, e.getMessage());
                         }
+                        int orientation = imageCursor.getInt(imageCursor.getColumnIndex(MediaStore.Images.Media.ORIENTATION));
+                        if(orientation != 0){
+                            System.out.println("ERROR "+orientation);
+                            //Matrix matrix = new Matrix();
+                            //matrix.setRotate(orientation - 90);
+                            //bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+
+                        }
+
                         return bmp;
                     }
 

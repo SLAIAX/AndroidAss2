@@ -9,7 +9,7 @@
         android:layout_height="match_parent"
         android:padding="2dp"
         android:layout_margin="2dp"
-        android:background="@android:color/background_dark">
+        android:background="@android:color/background_light">
 
 
 
