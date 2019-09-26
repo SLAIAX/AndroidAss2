@@ -21,7 +21,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.GridView;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.provider.MediaStore;
 import java.io.File;
@@ -31,23 +30,22 @@ import java.util.concurrent.ThreadPoolExecutor;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "Images";
 
-    private GridView images;
-    private ImageAdapter adapter;
-    private Cursor imageCursor;
-    private int imageCount;
-    private int position;
-    private LruCache<String, Bitmap> memoryCache;/////////////
-    private ThreadPoolExecutor executor;
+    private GridView images;                        //< Gridview
+    private ImageAdapter adapter;                   //< Adapter
+    private Cursor imageCursor;                     //< Cursor to access all images
+    private int imageCount;                         //< Number of images found
+    private int position;                           //< Position in Gridview, used for opening and closing app
+    private LruCache<String, Bitmap> memoryCache;   //< Cache storage
+    private ThreadPoolExecutor executor;            //< ThreadPool for multithreaded version. CURRENTLY NOT USED
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //Sets the layout and gets GridView reference
         setContentView(R.layout.activity_main);
-//        images=findViewById(R.id.gridview);
-//        adapter=new ImageAdapter();
-//        images.setAdapter(adapter);
-//        images.setOnItemClickListener((parent, view, position, id) -> openImageViewActivity(position));
+        images=findViewById(R.id.gridview);
 
+        //Requests permission to read external storage
         if(Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
             requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},1);
         } else {
@@ -55,21 +53,27 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    ////////////////////////////
-    public void addBitmapToMemoryCache(String key, Bitmap bitmap) {
-        if (getBitmapFromMemCache(key) == null) {
-            memoryCache.put(key, bitmap);
+    /*
+     * Adds a key, image pair to the cache
+     */
+    public void addImageToCache(String key, Bitmap imageBitmap) {
+        if (getImageFromCache(key) == null) {
+            memoryCache.put(key, imageBitmap);
         }
     }
 
-    public Bitmap getBitmapFromMemCache(String key) {
+    /*
+     * Retrieves an image from the cache given a key
+     */
+    public Bitmap getImageFromCache(String key) {
         return memoryCache.get(key);
     }
 
-
-
-    /////////////////////////////
-
+    /*
+     * If permission is requested, determines whether it was granted or not.
+     * If granted, now call init
+     * If not granted, close the app
+     */
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -79,145 +83,149 @@ public class MainActivity extends AppCompatActivity {
             finish();
         }
     }
-
+    /*
+     * Init function initializes:
+     *                  image adapter
+     *                  onClickListener
+     *                  Cursor
+     *                  Cache
+     */
     public void init(){
+        adapter=new ImageAdapter();
+        images.setAdapter(adapter);
+        //onClickListener for each item. Calls function to open new activity
+        images.setOnItemClickListener((parent, view, position, id) -> openImageViewActivity(position));
 
         ContentResolver cr = getContentResolver();
         imageCursor = cr.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, null, null, null,MediaStore.Images.Media.DATE_ADDED + " DESC");
         imageCursor.moveToFirst();
-        //adapter.notifyDataSetChanged();
         imageCount = imageCursor.getCount();
 
-
-
-        ///////////////////////////////////////////////////
-        // Get max available VM memory, exceeding this amount will throw an
-        // OutOfMemory exception. Stored in kilobytes as LruCache takes an
-        // int in its constructor.
+        //Retrieves amount of memory available to device
         final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+        //Specifies memory used by this application. Temporarily all.
+        final int cacheSize = maxMemory;
 
-        // Use 1/8th of the available memory for this memory cache.
-        final int cacheSize = maxMemory / 8;        //ADJUST. Was divided by 8
-
+        //Initializes cache to specified size
         memoryCache = new LruCache<String, Bitmap>(cacheSize) {
             @Override
             protected int sizeOf(String key, Bitmap bitmap) {
-                // The cache size will be measured in kilobytes rather than
-                // number of items.
                 return bitmap.getByteCount() / 1024;
             }
         };
-        /////////////////////////////////////////////////
+        //Initializes multiple threads. NOT CURRENTLY USED
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(4);
     }
 
-    // gets view data
+    //Populates gridview
     public class ImageAdapter extends BaseAdapter {
         class ViewHolder {
             int position;
             ImageView image;
         }
-        // how many tiles
         @Override
         public int getCount() {
             return imageCount;
         }
-        // not used
+        //Not used
         @Override
         public Object getItem(int i) {
             return null;
         }
-        // not used
+        //Not used
         @Override
         public long getItemId(int i) {
             return i;
         }
 
-        // populate a view
+        //Populates a view
         @Override
         public View getView(final int i, View convertView, ViewGroup viewGroup) {
             ViewHolder vh;
-//            //ImageView image;
             if (convertView == null) {
-                // if it's not recycled, inflate it from xml
+                //If not recycled, inflate from xml
                 convertView = getLayoutInflater().inflate(R.layout.image,  viewGroup, false);
-//                // convertview will be a LinearLayout
                 //Create Viewholder for it
                 vh=new ViewHolder();
                 vh.image=convertView.findViewById(R.id.galleryImage);
-                // and set the tag to it
                 convertView.setTag(vh);
             } else
-                vh=(ViewHolder)convertView.getTag();        //otherwise get the viewHolder
-            convertView.setMinimumHeight(images.getColumnWidth());
-
-            convertView.setLayoutParams(new GridView.LayoutParams(images.getColumnWidth(),images.getColumnWidth()));              //adjust
-            //Set position
+                vh=(ViewHolder)convertView.getTag();        //Otherwise get the viewHolder
+            //Specifies tile size
+            convertView.setLayoutParams(new GridView.LayoutParams(images.getColumnWidth(),images.getColumnWidth()));
+            //Sets position
             vh.position = i;
-            //Erase old image
+            //Erases old image
             vh.image.setImageBitmap(null);
-
-
+            //Sets key to just be it's position
             final String imageKey = String.valueOf(i);
-
-            final Bitmap bitmap = getBitmapFromMemCache(imageKey);
+            //Tries to initally load image from the cache
+            final Bitmap bitmap = getImageFromCache(imageKey);
             if (bitmap != null) {
+                //if successful
                 vh.image.setImageBitmap(bitmap);
             } else {
-                // make an AsyncTask to load the image
+                //Make an AsyncTask to load the image
                 new AsyncTask<ViewHolder, Void, Bitmap>() {
-
                     private ViewHolder vh;
-
                     @Override
                     protected Bitmap doInBackground(ViewHolder... params) {
-
                         vh = params[0];
-
                         imageCursor.moveToPosition(i);
                         Bitmap bmp = null;
                         try {
-                            String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Thumbnails.DATA));
+                            //Create file path
+                            String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Media.DATA));
                             File image = new File(path);
+                            //Adds sampling options to scale down
+                            BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+                            bmOptions.inJustDecodeBounds = true;
+                            BitmapFactory.decodeFile(image.getAbsolutePath(), bmOptions);
+                            int scaleFactor = 4;
 
-                            bmp = ThumbnailUtils.extractThumbnail(BitmapFactory.decodeFile(image.getAbsolutePath()),200,200);
+                            bmOptions.inJustDecodeBounds = false;
+                            bmOptions.inSampleSize = scaleFactor;
+                            bmOptions.inPurgeable = true;
+                            //Create Thumbnail
+                            bmp = ThumbnailUtils.extractThumbnail(BitmapFactory.decodeFile(image.getAbsolutePath(), bmOptions),images.getColumnWidth(),images.getColumnWidth());
                         } catch (Exception e) {
                             Log.i(TAG, e.getMessage());
                         }
-                        //int orientation = imageCursor.getInt(imageCursor.getColumnIndex(MediaStore.Images.Thumbnails.ORIENTATION));
-//                        System.out.println("ERROR "+orientation);
-//                        Matrix matrix = new Matrix();
-//                        switch(orientation){
-//                            case 90:
-//                                matrix.postRotate(90);
-//                                bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
-//                                break;
-//                            case 270:
-//                                matrix.postRotate(270);
-//                                bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
-//                                break;
-//                        }
 
-
+                        //Get rotation and adjust such that it's zero degrees
+                        int orientation = imageCursor.getInt(imageCursor.getColumnIndex(MediaStore.Images.Media.ORIENTATION));
+                        Matrix matrix = new Matrix();
+                        switch(orientation){
+                            case(90):
+                                matrix.postRotate(90);
+                                bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+                                break;
+                            case(270):
+                                matrix.postRotate(270);
+                                bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+                                break;
+                        }
                         return bmp;
                     }
 
                     @Override
                     protected void onPostExecute(Bitmap bmp) {
-                        // only set the imageview if the position hasn't changed.
+                        //Only set the imageview if the position hasn't changed.
                         if (vh.position == i) {
                             vh.image.setImageBitmap(bmp);
                         }
-                        addBitmapToMemoryCache(Integer.toString(i),bmp);
+                        //Add image to cache for later retrieval
+                        addImageToCache(Integer.toString(i),bmp);
                     }
-                }.executeOnExecutor(executor,vh);
+                }.execute(vh);//executeOnExecutor(executor,vh);
             }
-
-
             return convertView;
         }
     }
 
+    /*
+     * Finds and adds both orientation to the intent before opening the new activity
+     */
     public void openImageViewActivity(int position){
         imageCursor.moveToPosition(position);
         int orientation = imageCursor.getInt(imageCursor.getColumnIndex(MediaStore.Images.Media.ORIENTATION));
@@ -228,24 +236,24 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+
     @Override
     public void onPause() {
         super.onPause();
-        // save the list position
+        //Save the list position
         position=images.getFirstVisiblePosition();
-        // close the cursor (will be opened again in init() during onResume())
+        //Close the cursor
         imageCursor.close();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        // reinit in case things have changed
-        init();
         //Clear the cache in-case new images
         memoryCache.evictAll();
-        // set the list position
+        //Re-init in case things have changed
+        init();
+        //Set the list position
         images.setSelection(position);
     }
-
 }
