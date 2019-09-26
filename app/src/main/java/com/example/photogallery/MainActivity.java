@@ -15,7 +15,6 @@ import android.media.ThumbnailUtils;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.util.LruCache;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private int imageCount;                         //< Number of images found
     private int position;                           //< Position in Gridview, used for opening and closing app
     private LruCache<String, Bitmap> memoryCache;   //< Cache storage
-    private ThreadPoolExecutor executor;            //< ThreadPool for multithreaded version. CURRENTLY NOT USED
+    private ThreadPoolExecutor executor;            //< ThreadPool to allow for multiple threads
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,6 +43,19 @@ public class MainActivity extends AppCompatActivity {
         //Sets the layout and gets GridView reference
         setContentView(R.layout.activity_main);
         images=findViewById(R.id.gridview);
+
+        //Retrieves amount of memory available to device
+        final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+        //Specifies memory used by this application. Temporarily all.
+        final int cacheSize = maxMemory;
+
+        //Initializes cache to specified size
+        memoryCache = new LruCache<String, Bitmap>(cacheSize) {
+            @Override
+            protected int sizeOf(String key, Bitmap bitmap) {
+                return bitmap.getByteCount() / 1024;
+            }
+        };
 
         //Requests permission to read external storage
         if(Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
@@ -101,18 +113,7 @@ public class MainActivity extends AppCompatActivity {
         imageCursor.moveToFirst();
         imageCount = imageCursor.getCount();
 
-        //Retrieves amount of memory available to device
-        final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        //Specifies memory used by this application. Temporarily all.
-        final int cacheSize = maxMemory;
 
-        //Initializes cache to specified size
-        memoryCache = new LruCache<String, Bitmap>(cacheSize) {
-            @Override
-            protected int sizeOf(String key, Bitmap bitmap) {
-                return bitmap.getByteCount() / 1024;
-            }
-        };
         //Initializes multiple threads. NOT CURRENTLY USED
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(4);
     }
@@ -171,31 +172,25 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     protected Bitmap doInBackground(ViewHolder... params) {
                         vh = params[0];
-                        imageCursor.moveToPosition(i);
                         Bitmap bmp = null;
-                        try {
-                            //Create file path
-                            String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Media.DATA));
-                            File image = new File(path);
-                            //Adds sampling options to scale down
-                            BitmapFactory.Options bmOptions = new BitmapFactory.Options();
-                            bmOptions.inJustDecodeBounds = true;
-                            BitmapFactory.decodeFile(image.getAbsolutePath(), bmOptions);
-                            int scaleFactor = 4;
+                        imageData data;
+                        //Access cursor to get filepath and orientation
+                        data = accessCursor(i);
+                        File image = new File(data.path);
+                        //Adds sampling options to scale down
+                        BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+                        bmOptions.inJustDecodeBounds = true;
+                        BitmapFactory.decodeFile(image.getAbsolutePath(), bmOptions);
+                        int scaleFactor = 4;
 
-                            bmOptions.inJustDecodeBounds = false;
-                            bmOptions.inSampleSize = scaleFactor;
-                            bmOptions.inPurgeable = true;
-                            //Create Thumbnail
-                            bmp = ThumbnailUtils.extractThumbnail(BitmapFactory.decodeFile(image.getAbsolutePath(), bmOptions),images.getColumnWidth(),images.getColumnWidth());
-                        } catch (Exception e) {
-                            Log.i(TAG, e.getMessage());
-                        }
+                        bmOptions.inJustDecodeBounds = false;
+                        bmOptions.inSampleSize = scaleFactor;
+                        bmOptions.inPurgeable = true;
+                        //Create Thumbnail
+                        bmp = ThumbnailUtils.extractThumbnail(BitmapFactory.decodeFile(image.getAbsolutePath(), bmOptions),images.getColumnWidth(),images.getColumnWidth());
 
-                        //Get rotation and adjust such that it's zero degrees
-                        int orientation = imageCursor.getInt(imageCursor.getColumnIndex(MediaStore.Images.Media.ORIENTATION));
                         Matrix matrix = new Matrix();
-                        switch(orientation){
+                        switch(data.orientation){
                             case(90):
                                 matrix.postRotate(90);
                                 bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
@@ -217,7 +212,7 @@ public class MainActivity extends AppCompatActivity {
                         //Add image to cache for later retrieval
                         addImageToCache(Integer.toString(i),bmp);
                     }
-                }.execute(vh);//executeOnExecutor(executor,vh);
+                }.executeOnExecutor(executor,vh);
             }
             return convertView;
         }
@@ -236,6 +231,16 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    /*
+     * Threadsafe function to access necessary cursor data
+     */
+    public synchronized imageData accessCursor(int i){
+        imageCursor.moveToPosition(i);
+        String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Media.DATA));
+        int orientation = imageCursor.getInt(imageCursor.getColumnIndex(MediaStore.Images.Media.ORIENTATION));
+        return new imageData(orientation, path);
+    }
+
 
     @Override
     public void onPause() {
@@ -243,7 +248,7 @@ public class MainActivity extends AppCompatActivity {
         //Save the list position
         position=images.getFirstVisiblePosition();
         //Close the cursor
-        imageCursor.close();
+        //imageCursor.close();                         //CRASHES
     }
 
     @Override
@@ -252,8 +257,22 @@ public class MainActivity extends AppCompatActivity {
         //Clear the cache in-case new images
         memoryCache.evictAll();
         //Re-init in case things have changed
-        init();
+        if(Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED){
+            init();
+        }
         //Set the list position
         images.setSelection(position);
+    }
+
+    /*
+     * Class to allow me to return all necessary content when accessing the cursor
+     */
+    public class imageData{
+        public int orientation;
+        public String path;
+        public imageData(int o, String p){
+            orientation = o;
+            path = p;
+        }
     }
 }

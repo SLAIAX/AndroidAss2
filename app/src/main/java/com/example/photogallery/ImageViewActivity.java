@@ -21,10 +21,12 @@ public class ImageViewActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Intent intent = getIntent();
+        //Get selected image path
         path = intent.getStringExtra("ImagePath");
         setContentView(R.layout.activity_image_view);
+        //Get selected image orientation
         orientation = intent.getIntExtra("ImageOrientation", 0);
-        System.out.println("The orientation of this image is originally " + orientation);
+        //Correct the orientation as necessary
         Matrix matrix = new Matrix();
         switch(orientation){
             case 90:
@@ -36,6 +38,7 @@ public class ImageViewActivity extends AppCompatActivity {
         }
 
         try {
+            //open the image with high quality
             Bitmap bmp;
             File image = new File(path);
             bmp = BitmapFactory.decodeFile(image.getAbsolutePath());
