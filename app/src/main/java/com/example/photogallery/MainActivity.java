@@ -27,7 +27,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "Images";
 
     private GridView images;                        //< Gridview
     private ImageAdapter adapter;                   //< Adapter
