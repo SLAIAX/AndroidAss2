@@ -19,7 +19,6 @@ import android.util.Log;
 import android.util.LruCache;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageButton;
@@ -34,7 +33,6 @@ public class MainActivity extends AppCompatActivity {
 
     private GridView images;
     private ImageAdapter adapter;
-    private ImageButton reload;
     private Cursor imageCursor;
     private int imageCount;
     private int position;
@@ -45,10 +43,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        images=findViewById(R.id.gridview);
-        adapter=new ImageAdapter();
-        images.setAdapter(adapter);
-        images.setOnItemClickListener((parent, view, position, id) -> openImageViewActivity(position));
+//        images=findViewById(R.id.gridview);
+//        adapter=new ImageAdapter();
+//        images.setAdapter(adapter);
+//        images.setOnItemClickListener((parent, view, position, id) -> openImageViewActivity(position));
 
         if(Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
             requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},1);
@@ -110,12 +108,7 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         /////////////////////////////////////////////////
-
-
-
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(4);
-//        reload=findViewById(R.id.button);
-//        reload.setOnClickListener(view -> adapter.notifyDataSetChanged());
     }
 
     // gets view data
@@ -191,14 +184,20 @@ public class MainActivity extends AppCompatActivity {
                         } catch (Exception e) {
                             Log.i(TAG, e.getMessage());
                         }
-                        int orientation = imageCursor.getInt(imageCursor.getColumnIndex(MediaStore.Images.Media.ORIENTATION));
-                        if(orientation != 0){
-                            System.out.println("ERROR "+orientation);
-                            Matrix matrix = new Matrix();
-                            matrix.postRotate(-orientation);
-                            bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+                        //int orientation = imageCursor.getInt(imageCursor.getColumnIndex(MediaStore.Images.Thumbnails.ORIENTATION));
+//                        System.out.println("ERROR "+orientation);
+//                        Matrix matrix = new Matrix();
+//                        switch(orientation){
+//                            case 90:
+//                                matrix.postRotate(90);
+//                                bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+//                                break;
+//                            case 270:
+//                                matrix.postRotate(270);
+//                                bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
+//                                break;
+//                        }
 
-                        }
 
                         return bmp;
                     }
@@ -221,9 +220,11 @@ public class MainActivity extends AppCompatActivity {
 
     public void openImageViewActivity(int position){
         imageCursor.moveToPosition(position);
+        int orientation = imageCursor.getInt(imageCursor.getColumnIndex(MediaStore.Images.Media.ORIENTATION));
         String path = imageCursor.getString(imageCursor.getColumnIndex(MediaStore.Images.Media.DATA));
         Intent intent = new Intent(this, ImageViewActivity.class);
         intent.putExtra("ImagePath", path);
+        intent.putExtra("ImageOrientation", orientation);
         startActivity(intent);
     }
 
